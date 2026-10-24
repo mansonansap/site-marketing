@@ -1,0 +1,17 @@
+{
+  "name": "example-independent-marketer",
+  "version": "4.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node server.mjs --development",
+    "start": "node server.mjs",
+    "admin:create": "node scripts/create-admin.mjs",
+    "check": "node --check server.mjs && node --check admin/admin.js && node --check app.js && node --check cms/content.mjs && node --check cms/auth.mjs && node --check scripts/build.mjs && node --check scripts/create-admin.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
