@@ -26,7 +26,7 @@
   document.querySelectorAll('[data-year]').forEach(el=>el.textContent=new Date().getFullYear());
   updateLinks();try{localStorage.setItem('portfolio-language',language);}catch{}
   if(updateUrl){const url=new URL(location.href);url.searchParams.set('lang',language);try{history.replaceState(null,'',url.href);}catch{}}
-  document.getElementById('copy-status').textContent='';
+  document.getElementById('contact-status').textContent='';
  }
  let requested=new URLSearchParams(location.search).get('lang');if(!requested){try{requested=localStorage.getItem('portfolio-language');}catch{}}
  applyLanguage(requested||'ru');select.addEventListener('change',()=>applyLanguage(select.value,true));
@@ -37,12 +37,12 @@
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu.hidden)closeMenu(true);});
  matchMedia('(min-width: 761px)').addEventListener('change',event=>{if(event.matches)closeMenu();});
  document.addEventListener('click',event=>{if(!menu.hidden&&!event.target.closest('.site-header'))closeMenu();});
- let timer;
- document.querySelector('.copy-email').addEventListener('click',async()=>{
-  const status=document.getElementById('copy-status');clearTimeout(timer);
-  try{if(!navigator.clipboard)throw Error('Clipboard unavailable');await navigator.clipboard.writeText(data.email);status.textContent=text('copied');}
-  catch{status.textContent=text('copyFailed');}
-  timer=setTimeout(()=>{status.textContent='';},4500);
+ const form=document.getElementById('contact-form');
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();const button=form.querySelector('button');if(button.disabled)return;
+  const status=document.getElementById('contact-status');button.disabled=true;status.textContent=text('formSending');
+  try{const input=Object.fromEntries(new FormData(form));const response=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});if(!response.ok)throw Error('Send failed');form.reset();status.textContent=text('formSuccess');}
+  catch{status.textContent=text('formError');}finally{button.disabled=false;}
  });
  document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{
   const filter=button.dataset.filter;

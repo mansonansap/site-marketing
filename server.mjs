@@ -15,9 +15,9 @@ async function body(req,limit){
  for await(const chunk of req){size+=chunk.length;if(size>limit)throw new HttpError(413,'Файл или запрос слишком большой.');buffers.push(chunk);}
  return Buffer.concat(buffers);
 }
-async function jsonBody(req){
+async function jsonBody(req,limit=4*1024*1024){
  if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'Ожидается JSON.');
- try{return JSON.parse((await body(req,4*1024*1024)).toString('utf8'));}catch(error){if(error instanceof HttpError)throw error;throw new HttpError(400,'Некорректный JSON.');}
+ try{return JSON.parse((await body(req,limit)).toString('utf8'));}catch(error){if(error instanceof HttpError)throw error;throw new HttpError(400,'Некорректный JSON.');}
 }
 function imageType(buffer){
  if(buffer.length>=24&&buffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'png';
@@ -42,6 +42,8 @@ export async function createSiteServer(options={}){
  if(!published){published={...store.get(),publishedAt:new Date().toISOString()};await atomicJson(publishedFile,published);}
  let currentRelease=await compile(published,'site');let currentPreview=null;
  await cleanupReleases();
+ const inboxDir=path.join(dataDir,'inbox');await mkdir(inboxDir,{recursive:true,mode:0o700});
+ let contactAttempts=[];
  let publishQueue=Promise.resolve();
  async function compile(content,kind){
   const destination=path.join(dataDir,'releases',`${kind}-${randomUUID()}`);
@@ -74,6 +76,23 @@ export async function createSiteServer(options={}){
    let pathname;try{pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);}catch{throw new HttpError(400,'Некорректный URL.');}
    if(pathname.includes('\0')||pathname.includes('\\'))throw new HttpError(400,'Некорректный URL.');
    const mutation=!['GET','HEAD'].includes(req.method);
+   if(pathname==='/api/contact'&&req.method==='POST'){
+    checkOrigin(req);
+    const now=Date.now();contactAttempts=contactAttempts.filter(time=>now-time<900000);
+    if(contactAttempts.length>=60)throw new HttpError(429,'Попробуйте позже.');
+    contactAttempts.push(now);
+    const input=await jsonBody(req,16384);
+    if(!input||typeof input!=='object')throw new HttpError(400,'Заполните форму.');
+    if(input.website)return json(res,201,{ok:true});
+    const entry={id:randomUUID(),createdAt:new Date().toISOString()};
+    for(const [key,max] of [['name',100],['contact',200],['message',5000]]){
+     if(typeof input[key]!=='string'||!input[key].trim()||input[key].length>max)throw new HttpError(400,'Проверьте поля формы.');
+     entry[key]=input[key].trim();
+    }
+    if((await readdir(inboxDir)).length>=10000)throw new HttpError(503,'Попробуйте позже.');
+    await atomicJson(path.join(inboxDir,entry.id+'.json'),entry);
+    return json(res,201,{ok:true});
+   }
    if(pathname.startsWith('/api/admin/')){
     if(mutation)checkOrigin(req);
     if(pathname==='/api/admin/login'&&req.method==='POST'){
@@ -85,6 +104,11 @@ export async function createSiteServer(options={}){
     if(!session)throw new HttpError(401,'Войдите в админку.');
     if(mutation&&!auth.validCsrf(req,session))throw new HttpError(403,'Сессия формы устарела. Обновите страницу.');
     if(pathname==='/api/admin/logout'&&req.method==='POST'){auth.logout(req);res.setHeader('Set-Cookie',auth.cookie('',secure(req),true));return json(res,200,{ok:true});}
+    if(pathname==='/api/admin/messages'&&req.method==='GET'){
+     const files=(await readdir(inboxDir)).filter(name=>/^[a-f0-9-]{36}\.json$/.test(name));
+     const messages=await Promise.all(files.map(name=>readJson(path.join(inboxDir,name))));
+     return json(res,200,{messages:messages.filter(Boolean).sort((a,b)=>b.createdAt.localeCompare(a.createdAt))});
+    }
     if(pathname==='/api/admin/content'&&req.method==='GET')return json(res,200,{content:store.get(),publishedAt:published.publishedAt,publishedRevision:published.revision});
     if(pathname==='/api/admin/content'&&req.method==='PUT'){
      const input=await jsonBody(req);const content=await store.save(input.content,input.revision);return json(res,200,{content,publishedAt:published.publishedAt,publishedRevision:published.revision});

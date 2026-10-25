@@ -3,7 +3,7 @@
  const $=selector=>document.querySelector(selector);
  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const LANGS=['ru','en','uk','es'];
- const sections={profile:'Профиль и фото',experience:'Опыт',articles:'Статьи',cases:'Проекты',texts:'Тексты сайта'};
+ const sections={profile:'Профиль и фото',experience:'Опыт',articles:'Статьи',cases:'Проекты',texts:'Тексты сайта',messages:'Обращения'};
  const labels={
   cvLabel:'Маленькая подпись над именем',profileTitle:'Профессия',profileSubtitle:'Специализация',profileIntro:'Краткое описание',profileDetail:'Дополнительная строка',
   contactMe:'Кнопка связи в профиле',explore:'Кнопка перехода к опыту',yearsLabel:'Подпись к стажу',photoLabel:'Подпись без фотографии',photoAlt:'Описание фотографии для доступности',
@@ -69,11 +69,16 @@
  function renderEditor(){
   const lang=state.lang;let html='';
   if(state.section==='profile'){
-   html=`<section class="card"><h2>Основная информация</h2><p class="card-description">Имя, контакты и фотография общие для всех языков.</p><div class="grid">${field('Имя','profile.name',{required:true})}${field('Email','profile.email',{type:'email',required:true})}${field('Стаж в маркетинге, лет','profile.yearsExperience',{type:'number'})}</div></section><section class="card"><h2>Фотография</h2><p class="card-description">Портрет на главной странице.</p>${photoEditor('profile.photo')}</section><section class="card"><h2>Описание профиля</h2><p class="card-description">Тексты для выбранного языка.</p>${field('Профессия',`cvCopy.${lang}.profileTitle`)}${field('Специализация',`cvCopy.${lang}.profileSubtitle`)}${field('Краткое описание',`cvCopy.${lang}.profileIntro`,{type:'textarea'})}${field('Дополнительная строка',`cvCopy.${lang}.profileDetail`,{type:'textarea'})}</section><section class="card"><div class="section-top"><h2>Социальные сети и ссылки</h2>${button('+ Добавить','add-link','','small-button')}</div>${state.content.profile.links.map((_,i)=>`<div class="repeat-row"><div class="row">${field('Название',`profile.links.${i}.label`)}${field('URL',`profile.links.${i}.url`,{type:'url'})}${button('Убрать','remove-link',`data-index="${i}"`,'small-button danger-button')}</div></div>`).join('')||'<p class="help">Добавьте Telegram, LinkedIn или другие нужные ссылки.</p>'}</section>`;
-  }else if(state.section==='experience')html=experienceEditor();
+   html=`<section class="card"><h2>Основная информация</h2><p class="card-description">Имя, контакты и фотография общие для всех языков.</p><div class="grid">${field('Имя','profile.name',{required:true})}${field('Стаж в маркетинге, лет','profile.yearsExperience',{type:'number'})}</div></section><section class="card"><h2>Фотография</h2><p class="card-description">Портрет на главной странице.</p>${photoEditor('profile.photo')}</section><section class="card"><h2>Описание профиля</h2><p class="card-description">Тексты для выбранного языка.</p>${field('Профессия',`cvCopy.${lang}.profileTitle`)}${field('Специализация',`cvCopy.${lang}.profileSubtitle`)}${field('Краткое описание',`cvCopy.${lang}.profileIntro`,{type:'textarea'})}${field('Дополнительная строка',`cvCopy.${lang}.profileDetail`,{type:'textarea'})}</section><section class="card"><div class="section-top"><h2>Социальные сети и ссылки</h2>${button('+ Добавить','add-link','','small-button')}</div>${state.content.profile.links.map((_,i)=>`<div class="repeat-row"><div class="row">${field('Название',`profile.links.${i}.label`)}${field('URL',`profile.links.${i}.url`,{type:'url'})}${button('Убрать','remove-link',`data-index="${i}"`,'small-button danger-button')}</div></div>`).join('')||'<p class="help">Добавьте Telegram, LinkedIn или другие нужные ссылки.</p>'}</section>`;
+  }else if(state.section==='messages')html='<section class="card"><h2>Входящие обращения</h2><p class="help">Контакты и сообщения посетителей. Обновите раздел, чтобы увидеть новые.</p><div id="inbox-list">Загружаем…</div></section>';
+  else if(state.section==='experience')html=experienceEditor();
   else if(state.section==='articles'||state.section==='cases')html=publicationEditor();
   else html=textEditor();
   $('#editor').innerHTML=html;
+  document.querySelector('.toolbar-actions').hidden=state.section==='messages';
+  document.querySelector('.language-bar').hidden=state.section==='messages';
+  document.querySelector('.save-note').hidden=state.section==='messages';
+  if(state.section==='messages')api('messages').then(result=>{const list=$('#inbox-list');if(!list)return;list.innerHTML=result.messages.map(m=>`<article class="section-card inbox-message"><small>${esc(new Date(m.createdAt).toLocaleString('ru'))}</small><h3>${esc(m.name)}</h3><p><strong>Контакт:</strong> ${esc(m.contact)}</p><p class="inbox-body">${esc(m.message)}</p></article>`).join('')||'<p>Обращений пока нет.</p>';}).catch(error=>{const list=$('#inbox-list');if(list)list.textContent=error.message;});
  }
  function experienceEditor(){
   const entries=state.content.experience,lang=state.lang;
