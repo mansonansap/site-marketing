@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -6,6 +8,8 @@ import { cvCopy } from '../cv-copy.mjs';
 import { icons } from './icons.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+const assetVersion=file=>createHash('sha256').update(readFileSync(new URL('../'+file,import.meta.url))).digest('hex').slice(0,12);
+const cssVersion=assetVersion('style.css'),jsVersion=assetVersion('app.js');
 const languages = Object.keys(copy);
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const plain = value => String(value).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
@@ -71,7 +75,7 @@ function createPage(kind,item,content){
   const titles=Object.fromEntries(languages.map(lang=>[lang,(item?sentence(item.title[lang]):kind==='journal'?dict[lang].journalPageTitle:kind==='work'?dict[lang].workPageTitle:dict[lang].profileTitle)+' — '+profile.name]));
   const descriptions=Object.fromEntries(languages.map(lang=>[lang,item?item.lead[lang]:cvCopy[lang].metaDescription.replace('Example',profile.name)]));
   const data=JSON.stringify({translations,titles,descriptions}).replaceAll('<','\\u003c');
-  return `<!doctype html>\n<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f8f9fb"><meta name="description" content="${esc(descriptions.ru)}"><title>${esc(titles.ru)}</title><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head><body class="page-${kind}" id="top">${header}<main class="container" id="main">${body}${contact}</main>${footer}<script type="application/json" id="page-data">${data}</script></body></html>\n`;
+  return `<!doctype html>\n<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f8f9fb"><meta name="description" content="${esc(descriptions.ru)}"><title>${esc(titles.ru)}</title><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=${cssVersion}"><script src="/app.js?v=${jsVersion}" defer></script></head><body class="page-${kind}" id="top">${header}<main class="container" id="main">${body}${contact}</main>${footer}<script type="application/json" id="page-data">${data}</script></body></html>\n`;
 }
 export function defaultContent(){
  const experience=[['commerce','commerce','ecommerce-lifecycle'],['gaming','gaming','gaming-engagement']].map(([id,prefix],index)=>({id,icon:id,articleSlug:articles[index].slug,title:Object.fromEntries(languages.map(lang=>[lang,cvCopy[lang][prefix+'Role']])),subtitle:Object.fromEntries(languages.map(lang=>[lang,cvCopy[lang][prefix+'Caption']])),description:Object.fromEntries(languages.map(lang=>[lang,cvCopy[lang][prefix+'Intro']])),company:Object.fromEntries(languages.map(lang=>[lang,''])),period:Object.fromEntries(languages.map(lang=>[lang,''])),bullets:Object.fromEntries(languages.map(lang=>[lang,[cvCopy[lang][prefix+'Bullet1'],cvCopy[lang][prefix+'Bullet2']]]))}));

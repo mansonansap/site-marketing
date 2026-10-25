@@ -148,7 +148,7 @@ export async function createSiteServer(options={}){
     let relative=pathname.slice('/admin/preview/'.length);if(!relative||relative.endsWith('/'))relative+='index.html';
     return await sendFile(req,res,safeFile(currentPreview,relative),{privateFile:true,preview:true});
    }
-   if(allowedShared.has(pathname))return await sendFile(req,res,safeFile(ROOT,pathname),{privateFile:pathname.startsWith('/admin/')});
+   if(allowedShared.has(pathname))return await sendFile(req,res,safeFile(ROOT,pathname),{privateFile:true});
    if(pathname.startsWith('/assets/'))return await sendFile(req,res,safeFile(ROOT,pathname));
    if(/^\/uploads\/[a-f0-9]{36}\.(png|jpg|webp|gif)$/.test(pathname))return await sendFile(req,res,safeFile(path.join(dataDir,'uploads'),pathname.slice('/uploads/'.length)));
    let relative=pathname;if(relative.endsWith('/'))relative+='index.html';
