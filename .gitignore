@@ -4,3 +4,6 @@ node_modules/
 .env
 .env.*
 !.env.example
+php-hosting/marketing-cv-private/config.php
+php-hosting/marketing-cv-private/uploads/
+dist/

@@ -1,0 +1,5 @@
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+RewriteEngine On
+# All requests pass through the allowlist, including existing files.
+RewriteRule ^ index.php [END]

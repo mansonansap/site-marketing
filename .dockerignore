@@ -6,3 +6,6 @@ node_modules
 !.env.example
 *.log
 *.zip
+php-hosting/marketing-cv-private/config.php
+php-hosting/marketing-cv-private/uploads
+dist
